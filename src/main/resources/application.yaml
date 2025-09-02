@@ -1,0 +1,13 @@
+spring:
+  profiles:
+    active: default
+  application:
+    name: robssohex
+    lifecycle:
+      timeout-per-shutdown-phase: 30s
+
+server:
+  port: 8080
+  shutdown: graceful
+  servlet:
+    context-path: /${spring.application.name}
