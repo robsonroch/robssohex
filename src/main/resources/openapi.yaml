@@ -29,23 +29,113 @@ paths:
         '401':
           description: Credenciais inválidas
 
-  /api/hello:
-    get:
-      summary: Testar autenticação JWT
-      description: Retorna uma saudação se o token JWT for válido.
-      tags: [Teste Autenticado]
-      security:
-        - bearerAuth: []
+  /auth/pre-signup:
+    post:
+      tags: [PreSignup]
+      summary: Cria pré-cadastro e envia link por e-mail
+      operationId: createPreSignup
+      security: []   # sem JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreSignupRequest'
+            examples:
+              exemplo:
+                value:
+                  username: "robson"
+                  email: "robson@example.com"
       responses:
-        '200':
-          description: Sucesso – token válido
+        '202':
+          description: E-mail disparado para continuação do cadastro
           content:
             application/json:
               schema:
-                type: string
-                example: "Olá! Você está autenticado."
-        '401':
-          description: Token ausente ou inválido
+                $ref: '#/components/schemas/PreSignupResponse'
+              examples:
+                ok:
+                  value:
+                    message: "E-mail enviado para continuação do cadastro."
+        '400':
+          description: Requisição inválida (e-mail/username inválidos, já existentes, etc.)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: Limite de requisições (rate limiting)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/pre-signup/validate:
+    get:
+      tags: [PreSignup]
+      summary: Valida link de continuação (id + token)
+      operationId: validatePreSignupLink
+      security: []   # sem JWT
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+          description: ID do pré-cadastro
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+          description: Token opaco (uso único, 24h)
+      responses:
+        '200':
+          description: Resultado da validação
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidateTokenResponse' }
+              examples:
+                valido:   { value: { valid: true } }
+                invalido: { value: { valid: false } }
+        '400':
+          description: Link inválido, token inválido, violação de regra de negócio, etc.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: Link expirado (24h)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/complete-signup:
+    post:
+      tags: [PreSignup]
+      summary: Conclui cadastro com senha e data de nascimento
+      operationId: completeSignup
+      security: []   # sem JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompleteSignupRequest' }
+            examples:
+              exemplo:
+                value:
+                  id: "3d3a1a7b-9bfa-4d0f-9a7a-9f7e0b9f6a11"
+                  token: "Q6QFq6s3m1y2P2tDq0l8sH8jKZ2d3Gf7Z2yJkA"
+                  senha: "S3nh@Fort3!"
+                  dataNascimento: "1990-08-25"
+      responses:
+        '204':
+          description: Cadastro concluído (sem corpo)
+        '400':
+          description: Link inválido, token inválido, violação de regra de negócio, etc.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: Link expirado (24h)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
 components:
 
@@ -77,3 +167,70 @@ components:
         token:
           type: string
           example: eyJhbGciOiJIUzI1NiJ9...
+
+    PreSignupRequest:
+      type: object
+      required: [ username, email ]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          maxLength: 190
+
+    PreSignupResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "E-mail enviado para continuação do cadastro."
+        # opcional: informe a data/hora de expiração do link
+        expiresAt:
+          type: string
+          format: date-time
+          example: "2025-08-26T18:30:00Z"
+
+    ValidateTokenResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        token:
+          type: string
+          minLength: 20
+
+    CompleteSignupRequest:
+      type: object
+      required: [id, token, senha, dataNascimento]
+      properties:
+        id:
+          type: string
+          format: uuid
+        token:
+          type: string
+          minLength: 20
+        senha:
+          type: string
+          minLength: 8
+          description: Regras de complexidade ficam na camada de domínio.
+        dataNascimento:
+          type: string
+          format: date
+          example: "1990-08-25"
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "BAD_REQUEST"
+        message:
+          type: string
+          example: "Parâmetros inválidos."
+        details:
+          type: object
+          additionalProperties: true

@@ -30,6 +30,16 @@ public class JwtUtil {
         return compact;
     }
 
+    public String generatePreSignupToken(String preSignupId, int minutes) {
+        return Jwts.builder()
+                .setSubject(preSignupId)
+                .claim("type", "pre-signup")
+                .setIssuedAt(new Date())
+                .setExpiration(Date.from(Instant.now().plusSeconds(minutes * 60L)))
+                .signWith(Keys.hmacShaKeyFor(SECRET_KEY), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
     public String extractUsername(String token) {
         return getClaims(token).getSubject();
     }
@@ -38,7 +48,7 @@ public class JwtUtil {
         return getClaims(token).get("email", String.class);
     }
 
-    private Claims getClaims(String token) {
+    public Claims getClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(SECRET_KEY)
                 .build()
