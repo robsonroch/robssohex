@@ -35,6 +35,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 || path.equals("/robssohex/auth/pre-signup")
                 || path.startsWith("/robssohex/auth/pre-signup/validate")
                 || path.equals("/robssohex/signup/continue")
+                || path.equals("/robssohex/auth/complete-signup")
                 || path.startsWith("/robssohex/openapi.yaml")
                 || path.startsWith("/robssohex/swagger-ui")
                 || path.startsWith("/robssohex/v3/api-docs");
@@ -47,42 +48,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String path = request.getRequestURI();
-
-        // Fluxo especial para complete-signup: valida JWT de pre-signup
-        if (path.equals("/robssohex/auth/complete-signup")) {
-            CachedBodyHttpServletRequest cachedRequest = new CachedBodyHttpServletRequest(request);
-
-            String authHeader = cachedRequest.getHeader("Authorization");
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                return;
-            }
-            String token = authHeader.substring(7);
-            try {
-                var claims = jwtUtil.getClaims(token);
-                // Verifica se é token de pre-signup
-                if (!"pre-signup".equals(claims.get("type"))) {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    return;
-                }
-                // Extrai o preSignupId do token
-                String preSignupId = claims.getSubject();
-
-                // Extrai o id do corpo da requisição
-                String idFromBody = extractIdFromRequestBody(cachedRequest);
-                if (idFromBody == null || !preSignupId.equals(idFromBody)) {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    return;
-                }
-                // Se chegou aqui, está autenticado para o fluxo de complete-signup
-                // Não seta autenticação no contexto, pois não é usuário logado ainda
-            } catch (JwtException | IllegalArgumentException e) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                return;
-            }
-            filterChain.doFilter(cachedRequest, response);
-            return;
-        }
 
         String authHeader = request.getHeader("Authorization");
 
