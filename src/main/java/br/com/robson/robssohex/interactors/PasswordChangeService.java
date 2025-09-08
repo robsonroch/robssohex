@@ -49,7 +49,8 @@ public class PasswordChangeService {
         Instant expires = Instant.now().plusSeconds(24 * 3600);
         UUID tokenId = UUID.randomUUID();
 
-        tokenCache.put(tokenId.toString(), new TokenData(tokenHash, expires, userFromBase.getId()));
+        redisTemplate.opsForHash().put(TOKEN_CACHE_KEY, tokenId.toString(), new TokenData(tokenHash, expires, userFromBase.getId()));
+
 
         String link = buildContinueLink(tokenId, rawToken);
 
@@ -73,9 +74,10 @@ public class PasswordChangeService {
 
     public String validate(String id, String token) {
 
-        TokenData data = tokenCache.get(id);
+        TokenData data = (TokenData) redisTemplate.opsForHash().get(TOKEN_CACHE_KEY, id);
+
         if (data == null || data.expiresAt.isBefore(Instant.now())) {
-            tokenCache.remove(id);
+            redisTemplate.opsForHash().delete(TOKEN_CACHE_KEY, id);
             throw new IllegalArgumentException("Link inválido ou expirado");
         }
         boolean valid = BCrypt.checkpw(token, data.tokenHash);
@@ -89,16 +91,16 @@ public class PasswordChangeService {
     public void complete(CompletePasswordChangeRequest req) {
 
         User userFromContexto = (User) SecurityContextHolder.getContext().getAuthentication().getDetails();
-        TokenData data = tokenCache.get(req.getId());
+        TokenData data = (TokenData) redisTemplate.opsForHash().get(TOKEN_CACHE_KEY, req.getId());
         if (data == null || data.expiresAt.isBefore(Instant.now())) {
-            tokenCache.remove(req.getId());
+            redisTemplate.opsForHash().delete(TOKEN_CACHE_KEY, req.getId());
             throw new IllegalArgumentException("Link inválido ou expirado");
         }
         User user = userRepository.findById(data.userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
         user.setSenha(encoder.encode(req.getNovaSenha()));
         userRepository.save(user);
-        tokenCache.remove(req.getId()); // single-use
+        redisTemplate.opsForHash().delete(TOKEN_CACHE_KEY, req.getId()); // single-use
     }
 
     private String generateRawToken() {
