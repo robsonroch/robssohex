@@ -1,5 +1,7 @@
-package br.com.robson.robssohex;
+package br.com.robson.robssohex.transportlayers.filters;
 
+import br.com.robson.robssohex.CachedBodyHttpServletRequest;
+import br.com.robson.robssohex.JwtUtil;
 import br.com.robson.robssohex.entities.User;
 import br.com.robson.robssohex.repositories.UserRepository;
 import io.jsonwebtoken.JwtException;
@@ -7,6 +9,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,30 +20,15 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+@RequiredArgsConstructor
+public class PasswordChangeJwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil, UserRepository userRepository) {
-        this.jwtUtil = jwtUtil;
-        this.userRepository = userRepository;
-    }
-
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        return path.equals("/robssohex/auth/login")
-                || path.equals("/robssohex/auth/pre-signup")
-                || path.startsWith("/robssohex/auth/pre-signup/validate")
-                || path.startsWith("/robssohex/auth/password-change-request")
-                || path.startsWith("/robssohex/auth/password-change")
-                || path.equals("/robssohex/signup/continue")
-                || path.equals("/robssohex/auth/complete-signup")
-                || path.startsWith("/robssohex/openapi.yaml")
-                || path.startsWith("/robssohex/swagger-ui")
-                || path.startsWith("/robssohex/v3/api-docs");
+        return !request.getRequestURI().equals("/robssohex/auth/password-change-request") && !request.getRequestURI().equals("/robssohex/auth/password-change/complete");
     }
 
     @Override
@@ -56,8 +44,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             try {
-                String email = jwtUtil.extractEmail(token);
-                autenticarUsuario(email);
+
+                if(request.getRequestURI().equals("/robssohex/auth/password-change/complete")){
+                    String id = jwtUtil.extractId(token);
+                    autenticarUsuarioComId(id);
+                }else{
+                    String id = jwtUtil.extractEmail(token);
+                    autenticarComEmail(id);
+                }
+
             } catch (JwtException e) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 return;
@@ -69,7 +64,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private String extractIdFromRequestBody(HttpServletRequest request) {
         try {
-            // Lê o corpo da requisição e extrai o campo "id" (UUID)
             StringBuilder sb = new StringBuilder();
             String line;
             var reader = request.getReader();
@@ -77,7 +71,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 sb.append(line);
             }
             String body = sb.toString();
-            // Busca por: "id":"<uuid>" ou "id": "<uuid>"
             java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"id\"\\s*:\\s*\"([^\"]+)\"").matcher(body);
             if (m.find()) {
                 return m.group(1);
@@ -86,7 +79,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    private void autenticarUsuario(String email) {
+    private void autenticarComEmail(String email) {
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) return;
 
@@ -112,7 +105,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 .collect(Collectors.toList());
 
         var authentication = new UsernamePasswordAuthenticationToken(user.getUsername(), null, authorities);
-        authentication.setDetails(user.getEmail()); // Guarda o ID real para uso futuro
+        authentication.setDetails(user); // Guarda o ID real para uso futuro
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private void autenticarUsuarioComId(String id) {
+        User user = userRepository.findById(id).orElse(null);
+        if (user == null) return;
+
+        // Permissões das roles
+        List<String> roleAuthorities = user.getRoles().stream()
+                .map(role -> "ROLE_" + role.getName().toUpperCase()) // ex: ROLE_ADMIN
+                .toList();
+
+        List<String> permissionAuthorities = Stream.concat(
+                        user.getRoles().stream()
+                                .flatMap(role -> role.getPermissions().stream()),
+                        user.getPermissions().stream()
+                )
+                .map(p -> p.getAction() + ":" + p.getResource()) // ex: "create:user"
+                .toList();
+
+        List<SimpleGrantedAuthority> authorities = Stream.concat(
+                        roleAuthorities.stream(),
+                        permissionAuthorities.stream()
+                )
+                .distinct()
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toList());
+
+        var authentication = new UsernamePasswordAuthenticationToken(user.getUsername(), null, authorities);
+        authentication.setDetails(user); // Guarda o ID real para uso futuro
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }

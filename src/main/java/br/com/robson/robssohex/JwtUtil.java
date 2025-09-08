@@ -48,11 +48,29 @@ public class JwtUtil {
         return getClaims(token).get("email", String.class);
     }
 
+    public String extractId(String token) {
+        return getClaims(token).get("id", String.class);
+    }
+
     public Claims getClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(SECRET_KEY)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
+    }
+
+    public String generatePasswordChangeToken(String userId, int minutes) {
+        Claims claims = Jwts.claims();
+        claims.put("type", "change-password");
+        claims.put("id", userId);
+
+        return Jwts.builder()
+                .setSubject(userId)
+                .addClaims(claims)
+                .setIssuedAt(new Date())
+                .setExpiration(Date.from(Instant.now().plusSeconds(minutes * 60L)))
+                .signWith(Keys.hmacShaKeyFor(SECRET_KEY), SignatureAlgorithm.HS256)
+                .compact();
     }
 }

@@ -78,7 +78,7 @@ paths:
         - name: id
           in: query
           required: true
-          schema: { type: string, format: uuid }
+          schema: { type: string}
           description: ID do pré-cadastro
         - name: token
           in: query
@@ -133,6 +133,184 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '410':
           description: Link expirado (24h)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/password-change-request:
+    post:
+      tags: [ PasswordChange ]
+      summary: Solicita link para alteração de senha (usuário autenticado)
+      operationId: requestPasswordChange
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '202':
+          description: E-mail enviado para alteração de senha
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+              examples:
+                ok:
+                  value:
+                    message: "E-mail enviado para alteração de senha."
+        '401':
+          description: Não autenticado
+
+  /auth/password-reset-request:
+    post:
+      tags: [PasswordReset]
+      summary: Solicita link para redefinição de senha (esqueci minha senha)
+      operationId: requestPasswordReset
+      security: []   # sem JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+            examples:
+              exemplo:
+                value:
+                  email: "robson@example.com"
+      responses:
+        '202':
+          description: E-mail enviado para redefinição de senha
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+              examples:
+                ok:
+                  value:
+                    message: "E-mail enviado para redefinição de senha."
+        '400':
+          description: E-mail não encontrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/password-change/validate:
+    get:
+      tags: [PasswordChange]
+      summary: Valida link de alteração de senha (id + token)
+      operationId: validatePasswordChangeLink
+      security: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string}
+          description: ID da solicitação de alteração de senha
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+          description: Token opaco (uso único, 24h)
+      responses:
+        '200':
+          description: Resultado da validação
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidateTokenResponse' }
+              examples:
+                valido:   { value: { id: "string", token: "jwt" } }
+        '400':
+          description: Link inválido
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: Link expirado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/password-reset/validate:
+    get:
+      tags: [PasswordReset]
+      summary: Valida link de redefinição de senha (id + token)
+      operationId: validatePasswordResetLink
+      security: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string}
+          description: ID da solicitação de redefinição de senha
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+          description: Token opaco (uso único, 24h)
+      responses:
+        '200':
+          description: Resultado da validação
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidateTokenResponse' }
+              examples:
+                valido:   { value: { id: "string", token: "jwt" } }
+        '400':
+          description: Link inválido
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: Link expirado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/password-change/complete:
+    post:
+      tags: [PasswordChange]
+      summary: Conclui alteração de senha
+      operationId: completePasswordChange
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompletePasswordChangeRequest' }
+            examples:
+              exemplo:
+                value:
+                  id: "string"
+                  token: "jwt"
+                  novaSenha: "NovaSenhaForte123!"
+      responses:
+        '204':
+          description: Senha alterada com sucesso
+        '400':
+          description: Link inválido ou expirado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/password-reset/complete:
+    post:
+      tags: [PasswordReset]
+      summary: Conclui redefinição de senha
+      operationId: completePasswordReset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompletePasswordResetRequest' }
+            examples:
+              exemplo:
+                value:
+                  id: "uuid"
+                  token: "jwt"
+                  novaSenha: "NovaSenhaForte123!"
+      responses:
+        '204':
+          description: Senha redefinida com sucesso
+        '400':
+          description: Link inválido ou expirado
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -198,7 +376,6 @@ components:
       properties:
         id:
           type: string
-          format: uuid
         token:
           type: string
           minLength: 20
@@ -209,7 +386,6 @@ components:
       properties:
         id:
           type: string
-          format: uuid
         token:
           type: string
           minLength: 20
@@ -234,3 +410,42 @@ components:
         details:
           type: object
           additionalProperties: true
+
+    PasswordResetRequest:
+      type: object
+      required: [ email ]
+      properties:
+        email:
+          type: string
+          format: email
+
+    CompletePasswordChangeRequest:
+      type: object
+      required: [ id, token, novaSenha ]
+      properties:
+        id:
+          type: string
+        token:
+          type: string
+        novaSenha:
+          type: string
+          minLength: 8
+
+    CompletePasswordResetRequest:
+      type: object
+      required: [ id, token, novaSenha ]
+      properties:
+        id:
+          type: string
+        token:
+          type: string
+        novaSenha:
+          type: string
+          minLength: 8
+
+    GenericResponse:
+      type: object
+      properties:
+        message:
+          type: string
+

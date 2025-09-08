@@ -4,12 +4,13 @@ import br.com.robson.robssohex.JwtUtil;
 import br.com.robson.robssohex.UserClaims;
 import br.com.robson.robssohex.api.AuthApi;
 import br.com.robson.robssohex.entities.User;
+import br.com.robson.robssohex.interactors.PasswordChangeService;
+// import br.com.robson.robssohex.interactors.PasswordResetService;
 import br.com.robson.robssohex.interactors.PreSignupService;
 import br.com.robson.robssohex.model.*;
 import br.com.robson.robssohex.repositories.UserRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,6 +27,8 @@ public class AuthApiImpl implements AuthApi {
     private final JwtUtil jwtUtil;
     private final PasswordEncoder encoder;
     private final UserClaimsMapper mapper;
+    private final PasswordChangeService passwordChangeService;
+   // private final PasswordResetService passwordResetService;
 
     @Override
     public ResponseEntity<LoginResponse> authLoginPost(LoginRequest request) {
@@ -71,7 +74,7 @@ public class AuthApiImpl implements AuthApi {
     }
 
     @Override
-    public ResponseEntity<ValidateTokenResponse> validatePreSignupLink(UUID id, String token) {
+    public ResponseEntity<ValidateTokenResponse> validatePreSignupLink(String id, String token) {
         boolean valid = preSignupService.validate(id.toString(), token);
         if (!valid) {
             throw new IllegalStateException("Token inválido ou expirado");
@@ -91,5 +94,63 @@ public class AuthApiImpl implements AuthApi {
         return ResponseEntity.noContent().build();
     }
 
+    @Override
+    public ResponseEntity<GenericResponse> requestPasswordChange() {
+        passwordChangeService.createPasswordChangeRequest();
+        var resp = new GenericResponse();
+        resp.setMessage("E-mail enviado para redefinição de senha.");
+        return ResponseEntity.accepted().body(resp);
+    }
 
+    @Override
+    public ResponseEntity<ValidateTokenResponse> validatePasswordChangeLink(String id, String token) {
+        String userId = passwordChangeService.validate(id, token);
+        if (userId == null) {
+            throw new IllegalStateException("Token inválido ou expirado");
+        }
+        String jwt = jwtUtil.generatePasswordChangeToken(userId, 30); // 30 minutos
+        ValidateTokenResponse resp = new ValidateTokenResponse();
+        resp.setId(id);
+        resp.setToken(jwt);
+        return ResponseEntity.ok(resp);
+    }
+
+    @Override
+    public ResponseEntity<Void> completePasswordChange(CompletePasswordChangeRequest completePasswordChangeRequest) {
+        passwordChangeService.complete(completePasswordChangeRequest);
+        return ResponseEntity.noContent().build();
+    }
+
+//    @Override
+//    public ResponseEntity<Void> completePasswordReset(CompletePasswordResetRequest completePasswordResetRequest) {
+//        passwordResetService.complete(completePasswordResetRequest);
+//        return ResponseEntity.noContent().build();
+//    }
+
+
+
+//    @Override
+//    public ResponseEntity<GenericResponse> requestPasswordReset(PasswordResetRequest passwordResetRequest) {
+//        passwordResetService.createPasswordResetRequest(passwordResetRequest.getEmail());
+//        var resp = new GenericResponse();
+//        resp.setMessage("E-mail enviado para redefinição de senha.");
+//        return ResponseEntity.accepted().body(resp);
+//    }
+
+
+
+
+
+//    @Override
+//    public ResponseEntity<ValidateTokenResponse> validatePasswordResetLink(UUID id, String token) {
+//        boolean valid = passwordResetService.validate(id.toString(), token);
+//        if (!valid) {
+//            throw new IllegalStateException("Token inválido ou expirado");
+//        }
+//        String jwt = jwtUtil.generatePasswordResetToken(id.toString(), 30); // 30 minutos
+//        ValidateTokenResponse resp = new ValidateTokenResponse();
+//        resp.setId(id);
+//        resp.setToken(jwt);
+//        return ResponseEntity.ok(resp);
+//    }
 }

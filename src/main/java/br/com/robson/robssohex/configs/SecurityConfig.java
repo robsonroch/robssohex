@@ -2,6 +2,7 @@ package br.com.robson.robssohex.configs;
 
 import br.com.robson.robssohex.JwtAuthenticationFilter;
 import br.com.robson.robssohex.JwtUtil;
+import br.com.robson.robssohex.transportlayers.filters.PasswordChangeJwtFilter;
 import br.com.robson.robssohex.transportlayers.filters.PreSignupJwtFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -40,11 +41,13 @@ public class SecurityConfig {
                                 "/auth/pre-signup",
                                 "/auth/pre-signup/**",
                                 "/auth/complete-signup",
+                                "/auth/password-change/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/openapi.yaml"
                         ).permitAll()
+                        .requestMatchers("/auth/password-change-request").authenticated()
                         .requestMatchers("/user/**").authenticated()
                         .requestMatchers("/admin/**").authenticated()
                         .requestMatchers("/api/hello").authenticated()
@@ -52,6 +55,7 @@ public class SecurityConfig {
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(new PreSignupJwtFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new PasswordChangeJwtFilter(jwtUtil, userRepository), UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
 
