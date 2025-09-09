@@ -1,0 +1,49 @@
+# robsso-hex
+
+Este projeto é uma Prova de Conceito (POC) para autenticação SSO utilizando arquitetura hexagonal. Por ser uma POC, não foram implementados testes unitários. 
+
+## Importância dos Testes Unitários
+
+Apesar de não haver testes unitários nesta POC, é fundamental ressaltar que testes automatizados são essenciais para garantir a qualidade, segurança e evolução sustentável de sistemas em produção. Eles ajudam a prevenir regressões, facilitam refatorações e aumentam a confiança nas entregas.
+
+## Dependências Externas
+
+### Dependência do Microserviço de E-mail
+
+Este projeto depende do microserviço [email-service](https://github.com/robsonroch/email-service) para envio de e-mails relacionados a autenticação e alteração de senha. Certifique-se de que o serviço esteja em execução e corretamente configurado para integração.
+
+### DatabaseProperties e AWS Secrets Manager
+
+A configuração do banco de dados (`DatabaseProperties`) depende da busca de segredos no AWS Secrets Manager. Para facilitar o desenvolvimento local, é possível simular o Secrets Manager utilizando o [LocalStack](https://github.com/localstack/localstack).
+
+#### Como simular o Secrets Manager com LocalStack
+
+1. Instale e execute o LocalStack:
+   ```bash
+   pip install localstack
+   localstack start
+   ```
+2. Crie um segredo no LocalStack:
+   ```bash
+   aws --endpoint-url=http://localhost:4566 secretsmanager create-secret \
+     --name mysql-secret \
+     --secret-string '{"url":"jdbc:mysql://localhost:3306/db","username":"user","password":"pass"}'
+   ```
+3. O projeto irá buscar o segredo usando o endpoint do LocalStack já configurado em `SecretManagerConfiguration`.
+
+### Redis
+
+O projeto utiliza Redis para armazenamento temporário de tokens. Para simular o Redis localmente, também pode ser utilizado o LocalStack:
+
+1. Execute o serviço Redis no LocalStack:
+   ```bash
+   localstack start --services redis
+   ```
+2. Configure a aplicação para apontar para o Redis local:
+   - Host: `localhost`
+   - Porta: `6379` (padrão do Redis no LocalStack)
+
+## Observações
+
+- Este projeto é apenas uma POC e não deve ser utilizado em produção sem os devidos testes e validações.
+- Para mais detalhes sobre a configuração de LocalStack, consulte a [documentação oficial](https://docs.localstack.cloud/).

@@ -11,3 +11,8 @@ server:
   shutdown: graceful
   servlet:
     context-path: /${spring.application.name}
+
+
+email-service:
+  client:
+    url: http://localhost:9001/mail-service
