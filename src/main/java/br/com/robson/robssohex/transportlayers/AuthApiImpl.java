@@ -5,7 +5,7 @@ import br.com.robson.robssohex.UserClaims;
 import br.com.robson.robssohex.api.AuthApi;
 import br.com.robson.robssohex.entities.User;
 import br.com.robson.robssohex.interactors.PasswordChangeService;
-// import br.com.robson.robssohex.interactors.PasswordResetService;
+import br.com.robson.robssohex.interactors.PasswordResetService;
 import br.com.robson.robssohex.interactors.PreSignupService;
 import br.com.robson.robssohex.model.*;
 import br.com.robson.robssohex.repositories.UserRepository;
@@ -28,7 +28,7 @@ public class AuthApiImpl implements AuthApi {
     private final PasswordEncoder encoder;
     private final UserClaimsMapper mapper;
     private final PasswordChangeService passwordChangeService;
-   // private final PasswordResetService passwordResetService;
+    private final PasswordResetService passwordResetService;
 
     @Override
     public ResponseEntity<LoginResponse> authLoginPost(LoginRequest request) {
@@ -104,11 +104,11 @@ public class AuthApiImpl implements AuthApi {
 
     @Override
     public ResponseEntity<ValidateTokenResponse> validatePasswordChangeLink(String id, String token) {
-        String userId = passwordChangeService.validate(id, token);
-        if (userId == null) {
+        boolean valid = passwordChangeService.validate(id, token);
+        if (!valid) {
             throw new IllegalStateException("Token inválido ou expirado");
         }
-        String jwt = jwtUtil.generatePasswordChangeToken(userId, 30); // 30 minutos
+        String jwt = jwtUtil.generatePasswordChangeToken(id, 30); // 30 minutos
         ValidateTokenResponse resp = new ValidateTokenResponse();
         resp.setId(id);
         resp.setToken(jwt);
@@ -121,36 +121,33 @@ public class AuthApiImpl implements AuthApi {
         return ResponseEntity.noContent().build();
     }
 
-//    @Override
-//    public ResponseEntity<Void> completePasswordReset(CompletePasswordResetRequest completePasswordResetRequest) {
-//        passwordResetService.complete(completePasswordResetRequest);
-//        return ResponseEntity.noContent().build();
-//    }
+    @Override
+    public ResponseEntity<Void> completePasswordReset(CompletePasswordResetRequest completePasswordResetRequest) {
+        passwordResetService.complete(completePasswordResetRequest);
+        return ResponseEntity.noContent().build();
+    }
 
 
 
-//    @Override
-//    public ResponseEntity<GenericResponse> requestPasswordReset(PasswordResetRequest passwordResetRequest) {
-//        passwordResetService.createPasswordResetRequest(passwordResetRequest.getEmail());
-//        var resp = new GenericResponse();
-//        resp.setMessage("E-mail enviado para redefinição de senha.");
-//        return ResponseEntity.accepted().body(resp);
-//    }
+    @Override
+    public ResponseEntity<GenericResponse> requestPasswordReset(PasswordResetRequest passwordResetRequest) {
+        passwordResetService.createPasswordResetRequest(passwordResetRequest.getEmail());
+        var resp = new GenericResponse();
+        resp.setMessage("E-mail enviado para redefinição de senha.");
+        return ResponseEntity.accepted().body(resp);
+    }
 
+    @Override
+    public ResponseEntity<ValidateTokenResponse> validatePasswordResetLink(String id, String token) {
+                boolean valid = passwordResetService.validate(id.toString(), token);
+        if (!valid) {
+            throw new IllegalStateException("Token inválido ou expirado");
+        }
+        String jwt = jwtUtil.generatePasswordResetToken(id.toString(), 30); // 30 minutos
+        ValidateTokenResponse resp = new ValidateTokenResponse();
+        resp.setId(id);
+        resp.setToken(jwt);
+        return ResponseEntity.ok(resp);
+    }
 
-
-
-
-//    @Override
-//    public ResponseEntity<ValidateTokenResponse> validatePasswordResetLink(UUID id, String token) {
-//        boolean valid = passwordResetService.validate(id.toString(), token);
-//        if (!valid) {
-//            throw new IllegalStateException("Token inválido ou expirado");
-//        }
-//        String jwt = jwtUtil.generatePasswordResetToken(id.toString(), 30); // 30 minutos
-//        ValidateTokenResponse resp = new ValidateTokenResponse();
-//        resp.setId(id);
-//        resp.setToken(jwt);
-//        return ResponseEntity.ok(resp);
-//    }
 }

@@ -23,7 +23,7 @@ public class PreSignupService {
     private final PreRegistrationRepository repo;
     private final EmailServiceAdapter emailSender;
     private final UserService userService; // seu serviço que cria o usuário “definitivo”
-    private String continueBaseUrl = "http://localhost:8080/robssohex/auth/pre-signup/validate";  // ex: https://app.seudominio.com/signup/continue
+    private String continueBaseUrl = "http://localhost:5173/complete-signup";  // ex: https://app.seudominio.com/complete-signup
 
     private final SecureRandom secureRandom = new SecureRandom();
 

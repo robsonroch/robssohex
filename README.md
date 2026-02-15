@@ -14,14 +14,13 @@ Este projeto depende do microserviço [email-service](https://github.com/robsonr
 
 ### DatabaseProperties e AWS Secrets Manager
 
-A configuração do banco de dados (`DatabaseProperties`) depende da busca de segredos no AWS Secrets Manager. Para facilitar o desenvolvimento local, é possível simular o Secrets Manager utilizando o [LocalStack](https://github.com/localstack/localstack).
+A configuração do banco de dados (`DatabaseProperties`) depende da busca de segredos no AWS Secrets Manager. Para facilitar o desenvolvimento local, utilize o [LocalStack](https://github.com/localstack/localstack) via Docker Compose.
 
-#### Como simular o Secrets Manager com LocalStack
+#### Como simular o Secrets Manager e Redis com Docker Compose
 
-1. Instale e execute o LocalStack:
+1. Suba os serviços necessários (LocalStack e Redis) usando o Docker Compose já configurado no projeto:
    ```bash
-   pip install localstack
-   localstack start
+   docker-compose -f docker-compose-infra.yml -p localstack up -d
    ```
 2. Crie um segredo no LocalStack:
    ```bash
@@ -33,17 +32,16 @@ A configuração do banco de dados (`DatabaseProperties`) depende da busca de se
 
 ### Redis
 
-O projeto utiliza Redis para armazenamento temporário de tokens. Para simular o Redis localmente, também pode ser utilizado o LocalStack:
+O projeto utiliza Redis para armazenamento temporário de tokens. O serviço Redis já será iniciado junto com o LocalStack pelo Docker Compose:
 
-1. Execute o serviço Redis no LocalStack:
-   ```bash
-   localstack start --services redis
-   ```
-2. Configure a aplicação para apontar para o Redis local:
-   - Host: `localhost`
-   - Porta: `6379` (padrão do Redis no LocalStack)
+- Host: `localhost`
+- Porta: `6380` (mapeada para a porta padrão `6379` do container Redis)
 
 ## Observações
 
 - Este projeto é apenas uma POC e não deve ser utilizado em produção sem os devidos testes e validações.
 - Para mais detalhes sobre a configuração de LocalStack, consulte a [documentação oficial](https://docs.localstack.cloud/).
+- Para parar e remover os containers, utilize:
+  ```bash
+  docker-compose -f docker-compose-infra.yml -p localstack down
+  ```

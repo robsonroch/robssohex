@@ -23,6 +23,7 @@ public class JwtUtil {
                 .setSubject(user.getUsername()) // usado como principal
                 .claim("User", user)
                 .claim("email", user.getEmail())
+                .claim("username", user.getUsername())
                 .setIssuedAt(new Date())
                 .setExpiration(Date.from(Instant.now().plus(2, ChronoUnit.HOURS)))
                 .signWith(Keys.hmacShaKeyFor(SECRET_KEY), SignatureAlgorithm.HS256)
@@ -60,13 +61,27 @@ public class JwtUtil {
                 .getBody();
     }
 
-    public String generatePasswordChangeToken(String userId, int minutes) {
+    public String generatePasswordChangeToken(String requestId, int minutes) {
         Claims claims = Jwts.claims();
         claims.put("type", "change-password");
-        claims.put("id", userId);
+        claims.put("id", requestId);
 
         return Jwts.builder()
-                .setSubject(userId)
+                .setSubject(requestId)
+                .addClaims(claims)
+                .setIssuedAt(new Date())
+                .setExpiration(Date.from(Instant.now().plusSeconds(minutes * 60L)))
+                .signWith(Keys.hmacShaKeyFor(SECRET_KEY), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public String generatePasswordResetToken(String requestId, int minutes) {
+        Claims claims = Jwts.claims();
+        claims.put("type", "password-reset");
+        claims.put("id", requestId);
+
+        return Jwts.builder()
+                .setSubject(requestId)
                 .addClaims(claims)
                 .setIssuedAt(new Date())
                 .setExpiration(Date.from(Instant.now().plusSeconds(minutes * 60L)))

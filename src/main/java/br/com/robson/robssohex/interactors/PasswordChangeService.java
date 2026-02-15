@@ -19,6 +19,7 @@ import java.io.Serializable;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -32,17 +33,29 @@ public class PasswordChangeService {
     private final SecureRandom secureRandom = new SecureRandom();
     private final RedisTemplate<String, Object> redisTemplate;
     private final String TOKEN_CACHE_KEY = "passwordChangeTokens";
-    private final String continueBaseUrl = "http://localhost:8080/robssohex/auth/password-change/validate";
+    private final String continueBaseUrl = "http://localhost:5173/password-change";
+    private static final int RATE_LIMIT_MAX = 5;
+    private static final Duration RATE_LIMIT_WINDOW = Duration.ofHours(1);
 
     // tokenId -> (tokenHash, expiresAt)
     private final Map<String, TokenData> tokenCache = new ConcurrentHashMap<>();
 
     @Transactional
     public void createPasswordChangeRequest() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User userFromContexto = (User) SecurityContextHolder.getContext().getAuthentication().getDetails();
-        User userFromBase = userRepository.findByEmail(userFromContexto.getEmail())
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            throw new IllegalStateException("Usuário não autenticado");
+        }
+        Object details = authentication.getDetails();
+        String email = details instanceof String ? (String) details : null;
+        if (email == null || email.isBlank()) {
+            throw new IllegalStateException("E-mail do usuário não encontrado no contexto");
+        }
+
+        User userFromBase = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+
+        enforceRateLimit("password-change:user:" + userFromBase.getId());
 
         String rawToken = generateRawToken();
         String tokenHash = BCrypt.hashpw(rawToken, BCrypt.gensalt());
@@ -72,7 +85,7 @@ public class PasswordChangeService {
                 .toUriString();
     }
 
-    public String validate(String id, String token) {
+    public boolean validate(String id, String token) {
 
         TokenData data = (TokenData) redisTemplate.opsForHash().get(TOKEN_CACHE_KEY, id);
 
@@ -84,13 +97,11 @@ public class PasswordChangeService {
         if (!valid) {
             throw new IllegalArgumentException("Token inválido");
         }
-        return data.getUserId();
+        return true;
     }
 
     @Transactional
     public void complete(CompletePasswordChangeRequest req) {
-
-        User userFromContexto = (User) SecurityContextHolder.getContext().getAuthentication().getDetails();
         TokenData data = (TokenData) redisTemplate.opsForHash().get(TOKEN_CACHE_KEY, req.getId());
         if (data == null || data.expiresAt.isBefore(Instant.now())) {
             redisTemplate.opsForHash().delete(TOKEN_CACHE_KEY, req.getId());
@@ -101,6 +112,16 @@ public class PasswordChangeService {
         user.setSenha(encoder.encode(req.getNovaSenha()));
         userRepository.save(user);
         redisTemplate.opsForHash().delete(TOKEN_CACHE_KEY, req.getId()); // single-use
+    }
+
+    private void enforceRateLimit(String key) {
+        Long count = redisTemplate.opsForValue().increment(key);
+        if (count != null && count == 1L) {
+            redisTemplate.expire(key, RATE_LIMIT_WINDOW);
+        }
+        if (count != null && count > RATE_LIMIT_MAX) {
+            throw new IllegalStateException("Muitas solicitações. Tente novamente mais tarde.");
+        }
     }
 
     private String generateRawToken() {
