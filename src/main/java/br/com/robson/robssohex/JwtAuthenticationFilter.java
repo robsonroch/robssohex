@@ -102,7 +102,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 .flatMap(role -> role.getPermissions().stream()),
                         user.getPermissions().stream()
                 )
-                .map(p -> p.getAction() + ":" + p.getResource()) // ex: "create:user"
+            .map(p -> p.getResource() + ":" + p.getAction()) // ex: "user:read"
                 .toList();
 
         List<SimpleGrantedAuthority> authorities = Stream.concat(
