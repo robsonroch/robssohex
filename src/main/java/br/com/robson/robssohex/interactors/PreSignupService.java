@@ -23,7 +23,7 @@ public class PreSignupService {
     private final PreRegistrationRepository repo;
     private final EmailServiceAdapter emailSender;
     private final UserService userService; // seu serviço que cria o usuário “definitivo”
-    private String continueBaseUrl = "http://localhost:5173/complete-signup";  // ex: https://app.seudominio.com/complete-signup
+    private String continueBaseUrl = "https://intersystematically-unexampled-natacha.ngrok-free.dev/complete-signup";  // ex: https://app.seudominio.com/complete-signup
 
     private final SecureRandom secureRandom = new SecureRandom();
 
