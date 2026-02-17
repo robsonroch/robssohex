@@ -2,6 +2,11 @@ package br.com.robson.robssohex.admin.usecase;
 
 import br.com.robson.robssohex.model.AdminPagedResponse;
 import br.com.robson.robssohex.model.AdminUserResponse;
+import br.com.robson.robssohex.model.BatchUpdateUserPermissionsRequest;
+import br.com.robson.robssohex.model.BatchUpdateUserRolesRequest;
+import br.com.robson.robssohex.model.ReplaceUserAccessRequest;
+import br.com.robson.robssohex.model.ReplaceUserPermissionsRequest;
+import br.com.robson.robssohex.model.ReplaceUserRolesRequest;
 import br.com.robson.robssohex.admin.service.UserAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -10,6 +15,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -59,5 +66,43 @@ public class UserAdminUseCase {
 
     public AdminUserResponse removePermission(String userId, String permissionId) {
         return AdminMappers.toUserResponse(userAdminService.removePermission(userId, permissionId));
+    }
+
+    public AdminUserResponse batchUpdateRoles(String userId, BatchUpdateUserRolesRequest request) {
+        Set<String> addRoleIds = toIdSet(request == null ? null : request.getAddRoleIds());
+        Set<String> removeRoleIds = toIdSet(request == null ? null : request.getRemoveRoleIds());
+        return AdminMappers.toUserResponse(userAdminService.batchUpdateRoles(userId, addRoleIds, removeRoleIds));
+    }
+
+    public AdminUserResponse batchUpdatePermissions(String userId, BatchUpdateUserPermissionsRequest request) {
+        Set<String> addPermissionIds = toIdSet(request == null ? null : request.getAddPermissionIds());
+        Set<String> removePermissionIds = toIdSet(request == null ? null : request.getRemovePermissionIds());
+        return AdminMappers.toUserResponse(userAdminService.batchUpdatePermissions(userId, addPermissionIds, removePermissionIds));
+    }
+
+    public AdminUserResponse replaceRoles(String userId, ReplaceUserRolesRequest request) {
+        Set<String> roleIds = toIdSet(request == null ? null : request.getRoleIds());
+        return AdminMappers.toUserResponse(userAdminService.replaceRoles(userId, roleIds));
+    }
+
+    public AdminUserResponse replacePermissions(String userId, ReplaceUserPermissionsRequest request) {
+        Set<String> permissionIds = toIdSet(request == null ? null : request.getPermissionIds());
+        return AdminMappers.toUserResponse(userAdminService.replacePermissions(userId, permissionIds));
+    }
+
+    public AdminUserResponse replaceAccess(String userId, ReplaceUserAccessRequest request) {
+        Set<String> roleIds = toIdSet(request == null ? null : request.getRoleIds());
+        Set<String> permissionIds = toIdSet(request == null ? null : request.getPermissionIds());
+        return AdminMappers.toUserResponse(userAdminService.replaceAccess(userId, roleIds, permissionIds));
+    }
+
+    private Set<String> toIdSet(List<String> ids) {
+        if (ids == null) {
+            return Set.of();
+        }
+        return ids.stream()
+                .filter(id -> id != null && !id.trim().isEmpty())
+                .map(String::trim)
+                .collect(Collectors.toSet());
     }
 }

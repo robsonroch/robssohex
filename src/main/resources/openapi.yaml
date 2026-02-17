@@ -733,6 +733,55 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminUserResponse" }
 
+  /admin/users/{id}/roles:
+    patch:
+      tags: [Admin]
+      summary: Atualizar roles em lote
+      description: Adiciona e remove roles de um usuário em uma única operação.
+      operationId: batchUpdateUserRoles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BatchUpdateUserRolesRequest" }
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+    put:
+      tags: [Admin]
+      summary: Substituir roles do usuário
+      description: Remove todas as roles atuais e substitui pelas informadas.
+      operationId: replaceUserRoles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReplaceUserRolesRequest" }
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
   /admin/users/{id}/activate:
     patch:
       tags: [Admin]
@@ -769,6 +818,82 @@ paths:
       responses:
         "200":
           description: Usuário desativado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+  /admin/users/{id}/permissions:
+    patch:
+      tags: [Admin]
+      summary: Atualizar permissões em lote
+      description: Adiciona e remove permissões diretas de um usuário em uma única operação.
+      operationId: batchUpdateUserPermissions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: "#/components/schemas/BatchUpdateUserPermissionsRequest" }
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+    put:
+      tags: [Admin]
+      summary: Substituir permissões diretas do usuário
+      description: Remove todas as permissões diretas atuais e substitui pelas informadas.
+      operationId: replaceUserPermissions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: "#/components/schemas/ReplaceUserPermissionsRequest" }
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+  /admin/users/{id}/access:
+    put:
+      tags: [Admin]
+      summary: Substituir roles e permissões do usuário
+      description: Substitui roles e permissões diretas em uma única transação.
+      operationId: replaceUserAccess
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReplaceUserAccessRequest" }
+      responses:
+        "200":
+          description: Usuário atualizado
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminUserResponse" }
@@ -1095,3 +1220,55 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AdminPermissionResponse"
+
+    BatchUpdateUserRolesRequest:
+      type: object
+      properties:
+        addRoleIds:
+          type: array
+          items:
+            type: string
+        removeRoleIds:
+          type: array
+          items:
+            type: string
+
+    BatchUpdateUserPermissionsRequest:
+      type: object
+      properties:
+        addPermissionIds:
+          type: array
+          items:
+            type: string
+        removePermissionIds:
+          type: array
+          items:
+            type: string
+
+    ReplaceUserRolesRequest:
+      type: object
+      properties:
+        roleIds:
+          type: array
+          items:
+            type: string
+
+    ReplaceUserPermissionsRequest:
+      type: object
+      properties:
+        permissionIds:
+          type: array
+          items:
+            type: string
+
+    ReplaceUserAccessRequest:
+      type: object
+      properties:
+        roleIds:
+          type: array
+          items:
+            type: string
+        permissionIds:
+          type: array
+          items:
+            type: string

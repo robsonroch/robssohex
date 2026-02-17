@@ -33,7 +33,7 @@ public class PasswordChangeService {
     private final SecureRandom secureRandom = new SecureRandom();
     private final RedisTemplate<String, Object> redisTemplate;
     private final String TOKEN_CACHE_KEY = "passwordChangeTokens";
-    private final String continueBaseUrl = "http://localhost:5173/password-change";
+    private final String continueBaseUrl = "https://intersystematically-unexampled-natacha.ngrok-free.dev/password-change";
     private static final int RATE_LIMIT_MAX = 5;
     private static final Duration RATE_LIMIT_WINDOW = Duration.ofHours(1);
 

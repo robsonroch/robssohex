@@ -34,7 +34,7 @@ public class PasswordResetService {
 	private static final String TOKEN_CACHE_KEY = "passwordResetTokens";
 	private static final int RATE_LIMIT_MAX = 5;
 	private static final Duration RATE_LIMIT_WINDOW = Duration.ofHours(1);
-	private final String continueBaseUrl = "http://localhost:5173/password-reset";
+	private final String continueBaseUrl = "https://intersystematically-unexampled-natacha.ngrok-free.dev/password-reset";
 
 	@Transactional
 	public void createPasswordResetRequest(String email) {
