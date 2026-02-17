@@ -8,7 +8,6 @@ servers:
   - url: http://localhost:8080
 
 paths:
-
   /auth/login:
     post:
       summary: Autenticar e obter JWT
@@ -18,15 +17,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: "#/components/schemas/LoginRequest"
       responses:
-        '200':
+        "200":
           description: Token retornado com sucesso
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
-        '401':
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
           description: Credenciais inválidas
 
   /auth/pre-signup:
@@ -34,51 +33,51 @@ paths:
       tags: [PreSignup]
       summary: Cria pré-cadastro e envia link por e-mail
       operationId: createPreSignup
-      security: []   # sem JWT
+      security: [] # sem JWT
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PreSignupRequest'
+              $ref: "#/components/schemas/PreSignupRequest"
             examples:
               exemplo:
                 value:
                   username: "robson"
                   email: "robson@example.com"
       responses:
-        '202':
+        "202":
           description: E-mail disparado para continuação do cadastro
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PreSignupResponse'
+                $ref: "#/components/schemas/PreSignupResponse"
               examples:
                 ok:
                   value:
                     message: "E-mail enviado para continuação do cadastro."
-        '400':
+        "400":
           description: Requisição inválida (e-mail/username inválidos, já existentes, etc.)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '429':
+              schema: { $ref: "#/components/schemas/Error" }
+        "429":
           description: Limite de requisições (rate limiting)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+              schema: { $ref: "#/components/schemas/Error" }
 
   /auth/pre-signup/validate:
     get:
       tags: [PreSignup]
       summary: Valida link de continuação (id + token)
       operationId: validatePreSignupLink
-      security: []   # sem JWT
+      security: [] # sem JWT
       parameters:
         - name: id
           in: query
           required: true
-          schema: { type: string, format: uuid }
+          schema: { type: string }
           description: ID do pré-cadastro
         - name: token
           in: query
@@ -86,36 +85,36 @@ paths:
           schema: { type: string }
           description: Token opaco (uso único, 24h)
       responses:
-        '200':
+        "200":
           description: Resultado da validação
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ValidateTokenResponse' }
+              schema: { $ref: "#/components/schemas/ValidateTokenResponse" }
               examples:
-                valido:   { value: { valid: true } }
+                valido: { value: { valid: true } }
                 invalido: { value: { valid: false } }
-        '400':
+        "400":
           description: Link inválido, token inválido, violação de regra de negócio, etc.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '410':
+              schema: { $ref: "#/components/schemas/Error" }
+        "410":
           description: Link expirado (24h)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+              schema: { $ref: "#/components/schemas/Error" }
 
   /auth/complete-signup:
     post:
       tags: [PreSignup]
       summary: Conclui cadastro com senha e data de nascimento
       operationId: completeSignup
-      security: []   # sem JWT
+      security: [] # sem JWT
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CompleteSignupRequest' }
+            schema: { $ref: "#/components/schemas/CompleteSignupRequest" }
             examples:
               exemplo:
                 value:
@@ -124,21 +123,876 @@ paths:
                   senha: "S3nh@Fort3!"
                   dataNascimento: "1990-08-25"
       responses:
-        '204':
+        "204":
           description: Cadastro concluído (sem corpo)
-        '400':
+        "400":
           description: Link inválido, token inválido, violação de regra de negócio, etc.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '410':
+              schema: { $ref: "#/components/schemas/Error" }
+        "410":
           description: Link expirado (24h)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /auth/password-change-request:
+    post:
+      tags: [PasswordChange]
+      summary: Solicita link para alteração de senha (usuário autenticado)
+      operationId: requestPasswordChange
+      security:
+        - bearerAuth: []
+      responses:
+        "202":
+          description: E-mail enviado para alteração de senha
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericResponse"
+              examples:
+                ok:
+                  value:
+                    message: "E-mail enviado para alteração de senha."
+        "401":
+          description: Não autenticado
+
+  /auth/password-reset-request:
+    post:
+      tags: [PasswordReset]
+      summary: Solicita link para redefinição de senha (esqueci minha senha)
+      operationId: requestPasswordReset
+      security: [] # sem JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordResetRequest"
+            examples:
+              exemplo:
+                value:
+                  email: "robson@example.com"
+      responses:
+        "202":
+          description: E-mail enviado para redefinição de senha
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericResponse"
+              examples:
+                ok:
+                  value:
+                    message: "E-mail enviado para redefinição de senha."
+        "400":
+          description: E-mail não encontrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /auth/password-change/validate:
+    get:
+      tags: [PasswordChange]
+      summary: Valida link de alteração de senha (id + token)
+      operationId: validatePasswordChangeLink
+      security: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string }
+          description: ID da solicitação de alteração de senha
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+          description: Token opaco (uso único, 24h)
+      responses:
+        "200":
+          description: Resultado da validação
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidateTokenResponse" }
+              examples:
+                valido: { value: { id: "string", token: "jwt" } }
+        "400":
+          description: Link inválido
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "410":
+          description: Link expirado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /auth/password-reset/validate:
+    get:
+      tags: [PasswordReset]
+      summary: Valida link de redefinição de senha (id + token)
+      operationId: validatePasswordResetLink
+      security: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string }
+          description: ID da solicitação de redefinição de senha
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+          description: Token opaco (uso único, 24h)
+      responses:
+        "200":
+          description: Resultado da validação
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidateTokenResponse" }
+              examples:
+                valido: { value: { id: "string", token: "jwt" } }
+        "400":
+          description: Link inválido
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "410":
+          description: Link expirado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /auth/password-change/complete:
+    post:
+      tags: [PasswordChange]
+      summary: Conclui alteração de senha
+      operationId: completePasswordChange
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: "#/components/schemas/CompletePasswordChangeRequest" }
+            examples:
+              exemplo:
+                value:
+                  id: "string"
+                  token: "jwt"
+                  novaSenha: "NovaSenhaForte123!"
+      responses:
+        "204":
+          description: Senha alterada com sucesso
+        "400":
+          description: Link inválido ou expirado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /auth/password-reset/complete:
+    post:
+      tags: [PasswordReset]
+      summary: Conclui redefinição de senha
+      operationId: completePasswordReset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: "#/components/schemas/CompletePasswordResetRequest" }
+            examples:
+              exemplo:
+                value:
+                  id: "uuid"
+                  token: "jwt"
+                  novaSenha: "NovaSenhaForte123!"
+      responses:
+        "204":
+          description: Senha redefinida com sucesso
+        "400":
+          description: Link inválido ou expirado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /admin/permissions:
+    post:
+      tags: [Admin]
+      summary: Criar permissão
+      description: Cria uma permissão do tipo action/resource usada em `@PreAuthorize`.
+      operationId: createPermission
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminPermissionRequest" }
+            examples:
+              exemplo:
+                value:
+                  resource: "user"
+                  action: "read"
+      responses:
+        "200":
+          description: Permissão criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPermissionResponse" }
+              examples:
+                ok:
+                  value:
+                    id: "perm_123"
+                    resource: "user"
+                    action: "read"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+    get:
+      tags: [Admin]
+      summary: Listar permissões (paginado)
+      description: Retorna permissões com paginação e filtro por resource/action.
+      operationId: listPermissions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          required: false
+          schema: { type: integer, default: 10 }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Página de permissões
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPagedResponse" }
+              examples:
+                ok:
+                  value:
+                    content:
+                      - id: "perm_123"
+                        resource: "user"
+                        action: "read"
+                    page: 0
+                    size: 10
+                    totalElements: 1
+                    totalPages: 1
+
+  /admin/permissions/{id}:
+    get:
+      tags: [Admin]
+      summary: Buscar permissão por id
+      description: Retorna uma permissão específica.
+      operationId: getPermission
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Permissão encontrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPermissionResponse" }
+        "400":
+          description: Permissão não encontrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+    put:
+      tags: [Admin]
+      summary: Atualizar permissão
+      description: Atualiza `resource` e `action` de uma permissão existente.
+      operationId: updatePermission
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminPermissionRequest" }
+            examples:
+              exemplo:
+                value:
+                  resource: "role"
+                  action: "write"
+      responses:
+        "200":
+          description: Permissão atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPermissionResponse" }
+        "400":
+          description: Permissão não encontrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+    delete:
+      tags: [Admin]
+      summary: Remover permissão
+      description: Remove uma permissão pelo id.
+      operationId: deletePermission
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Permissão removida
+
+  /admin/roles:
+    post:
+      tags: [Admin]
+      summary: Criar role
+      description: Cria uma role com nome, descrição e permissões opcionais.
+      operationId: createRole
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminRoleRequest" }
+            examples:
+              exemplo:
+                value:
+                  name: "ADMIN"
+                  description: "Acesso total ao painel"
+                  permissionIds: ["perm_123", "perm_456"]
+      responses:
+        "200":
+          description: Role criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminRoleResponse" }
+
+    get:
+      tags: [Admin]
+      summary: Listar roles (paginado)
+      description: Retorna roles com paginação e filtro por name.
+      operationId: listRoles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          required: false
+          schema: { type: integer, default: 10 }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Página de roles
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPagedResponse" }
+              examples:
+                ok:
+                  value:
+                    content:
+                      - id: "role_1"
+                        name: "ADMIN"
+                        description: "Acesso total"
+                        permissions: []
+                    page: 0
+                    size: 10
+                    totalElements: 1
+                    totalPages: 1
+  /admin/me:
+    get:
+      tags: [Admin]
+      summary: Usuário autenticado
+      description: Retorna dados do usuário autenticado para montagem de menu.
+      operationId: adminMe
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Usuário autenticado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+              examples:
+                ok:
+                  value:
+                    id: "user_1"
+                    username: "robson"
+                    email: "robson@example.com"
+                    ativo: true
+                    roles: []
+                    permissions: []
+
+  /admin/roles/{id}:
+    get:
+      tags: [Admin]
+      summary: Buscar role por id
+      description: Retorna uma role específica com suas permissões.
+      operationId: getRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Role encontrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminRoleResponse" }
+
+    put:
+      tags: [Admin]
+      summary: Atualizar role
+      description: Atualiza nome, descrição e permissões da role.
+      operationId: updateRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminRoleRequest" }
+            examples:
+              exemplo:
+                value:
+                  name: "SUPPORT"
+                  description: "Suporte com acesso limitado"
+                  permissionIds: ["perm_123"]
+      responses:
+        "200":
+          description: Role atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminRoleResponse" }
+
+    delete:
+      tags: [Admin]
+      summary: Remover role
+      description: Remove uma role pelo id.
+      operationId: deleteRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Role removida
+
+  /admin/roles/{roleId}/permissions/{permissionId}:
+    post:
+      tags: [Admin]
+      summary: Vincular permissão à role
+      description: Adiciona uma permissão específica à role.
+      operationId: addPermissionToRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: permissionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Role atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminRoleResponse" }
+
+    delete:
+      tags: [Admin]
+      summary: Remover permissão da role
+      description: Remove o vínculo entre role e permissão.
+      operationId: removePermissionFromRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: permissionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Role atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminRoleResponse" }
+
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: Listar usuários (paginado)
+      description: Lista usuários com paginação, filtro por username/email e ativo.
+      operationId: listUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          required: false
+          schema: { type: integer, default: 10 }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+        - name: active
+          in: query
+          required: false
+          schema: { type: boolean }
+          description: Filtra por ativos/inativos
+      responses:
+        "200":
+          description: Página de usuários
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPagedResponse" }
+              examples:
+                ok:
+                  value:
+                    content:
+                      - id: "user_1"
+                        username: "robson"
+                        email: "robson@example.com"
+                        ativo: true
+                        roles: []
+                        permissions: []
+                    page: 0
+                    size: 10
+                    totalElements: 1
+                    totalPages: 1
+
+  /admin/users/{id}:
+    get:
+      tags: [Admin]
+      summary: Buscar usuário por id
+      description: Retorna dados do usuário, roles e permissões diretas.
+      operationId: getUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Usuário encontrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+  /admin/users/{id}/roles:
+    patch:
+      tags: [Admin]
+      summary: Atualizar roles em lote
+      description: Adiciona e remove roles de um usuário em uma única operação.
+      operationId: batchUpdateUserRoles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BatchUpdateUserRolesRequest" }
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+    put:
+      tags: [Admin]
+      summary: Substituir roles do usuário
+      description: Remove todas as roles atuais e substitui pelas informadas.
+      operationId: replaceUserRoles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReplaceUserRolesRequest" }
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+  /admin/users/{id}/activate:
+    patch:
+      tags: [Admin]
+      summary: Ativar usuário
+      description: Marca o usuário como ativo.
+      operationId: activateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Usuário ativado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+  /admin/users/{id}/deactivate:
+    patch:
+      tags: [Admin]
+      summary: Desativar usuário
+      description: Marca o usuário como inativo.
+      operationId: deactivateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Usuário desativado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+  /admin/users/{id}/permissions:
+    patch:
+      tags: [Admin]
+      summary: Atualizar permissões em lote
+      description: Adiciona e remove permissões diretas de um usuário em uma única operação.
+      operationId: batchUpdateUserPermissions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: "#/components/schemas/BatchUpdateUserPermissionsRequest" }
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+    put:
+      tags: [Admin]
+      summary: Substituir permissões diretas do usuário
+      description: Remove todas as permissões diretas atuais e substitui pelas informadas.
+      operationId: replaceUserPermissions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: "#/components/schemas/ReplaceUserPermissionsRequest" }
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+  /admin/users/{id}/access:
+    put:
+      tags: [Admin]
+      summary: Substituir roles e permissões do usuário
+      description: Substitui roles e permissões diretas em uma única transação.
+      operationId: replaceUserAccess
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReplaceUserAccessRequest" }
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+  /admin/users/{userId}/roles/{roleId}:
+    post:
+      tags: [Admin]
+      summary: Vincular role ao usuário
+      description: Adiciona uma role ao usuário.
+      operationId: addRoleToUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+    delete:
+      tags: [Admin]
+      summary: Remover role do usuário
+      description: Remove o vínculo entre usuário e role.
+      operationId: removeRoleFromUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+  /admin/users/{userId}/permissions/{permissionId}:
+    post:
+      tags: [Admin]
+      summary: Vincular permissão direta ao usuário
+      description: Adiciona uma permissão direta ao usuário.
+      operationId: addPermissionToUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: permissionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
+
+    delete:
+      tags: [Admin]
+      summary: Remover permissão direta do usuário
+      description: Remove o vínculo direto entre usuário e permissão.
+      operationId: removePermissionFromUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: permissionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUserResponse" }
 
 components:
-
   securitySchemes:
     bearerAuth:
       type: http
@@ -146,7 +1000,6 @@ components:
       bearerFormat: JWT
 
   schemas:
-
     LoginRequest:
       type: object
       properties:
@@ -170,7 +1023,7 @@ components:
 
     PreSignupRequest:
       type: object
-      required: [ username, email ]
+      required: [username, email]
       properties:
         username:
           type: string
@@ -198,7 +1051,6 @@ components:
       properties:
         id:
           type: string
-          format: uuid
         token:
           type: string
           minLength: 20
@@ -209,7 +1061,6 @@ components:
       properties:
         id:
           type: string
-          format: uuid
         token:
           type: string
           minLength: 20
@@ -234,3 +1085,190 @@ components:
         details:
           type: object
           additionalProperties: true
+
+    PasswordResetRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    CompletePasswordChangeRequest:
+      type: object
+      required: [id, token, novaSenha]
+      properties:
+        id:
+          type: string
+        token:
+          type: string
+        novaSenha:
+          type: string
+          minLength: 8
+
+    CompletePasswordResetRequest:
+      type: object
+      required: [id, token, novaSenha]
+      properties:
+        id:
+          type: string
+        token:
+          type: string
+        novaSenha:
+          type: string
+          minLength: 8
+
+    GenericResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    AdminPagedResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            type: object
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+
+    AdminPermissionRequest:
+      type: object
+      required: [resource, action]
+      properties:
+        resource:
+          type: string
+          example: user
+        action:
+          type: string
+          example: read
+
+    AdminPermissionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        resource:
+          type: string
+        action:
+          type: string
+
+    AdminRoleRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: ADMIN
+        description:
+          type: string
+          example: Acesso total ao painel
+        permissionIds:
+          type: array
+          items:
+            type: string
+
+    AdminRoleResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPermissionResponse"
+
+    AdminRoleSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+
+    AdminUserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        ativo:
+          type: boolean
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminRoleSummary"
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPermissionResponse"
+
+    BatchUpdateUserRolesRequest:
+      type: object
+      properties:
+        addRoleIds:
+          type: array
+          items:
+            type: string
+        removeRoleIds:
+          type: array
+          items:
+            type: string
+
+    BatchUpdateUserPermissionsRequest:
+      type: object
+      properties:
+        addPermissionIds:
+          type: array
+          items:
+            type: string
+        removePermissionIds:
+          type: array
+          items:
+            type: string
+
+    ReplaceUserRolesRequest:
+      type: object
+      properties:
+        roleIds:
+          type: array
+          items:
+            type: string
+
+    ReplaceUserPermissionsRequest:
+      type: object
+      properties:
+        permissionIds:
+          type: array
+          items:
+            type: string
+
+    ReplaceUserAccessRequest:
+      type: object
+      properties:
+        roleIds:
+          type: array
+          items:
+            type: string
+        permissionIds:
+          type: array
+          items:
+            type: string

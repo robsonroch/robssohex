@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(
         name = "emailClient",
-        url = "http://localhost:9001/mail-service"
+        url = "${email-service.client.url}"
 )
 public interface EmailClient {
 

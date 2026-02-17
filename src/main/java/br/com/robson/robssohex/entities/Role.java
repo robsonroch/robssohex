@@ -22,6 +22,9 @@ public class Role {
 
     private String name; // Ex: ADMIN, EDITOR
 
+    @Column(length = 255)
+    private String description;
+
     private String basePath;
 
     @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)

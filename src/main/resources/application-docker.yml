@@ -1,4 +1,7 @@
 spring:
+  redis:
+    host: 127.0.0.1 # or your external Redis server IP/hostname
+    port: 6380
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
